@@ -4,8 +4,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import  sisgestaocsatleta.SistemaMaeDb;
-
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -28,7 +26,7 @@ import javafx.scene.Node;
 public abstract class SistemaEstoqueMae extends Application implements SistemaEstoqueMaeInterface{
 
 public Connection connection;
-private SistemaMaeDb sistemaDb;
+
 
 public void createDatabaseConnection() {
     try {
@@ -148,13 +146,13 @@ public void closeDatabaseConnection() {
             getChildren().addAll(nameLabel, quantityLabel, buttons);
         }
 
-            private void increaseQuantity() {
+            public void increaseQuantity() {
             product.setQuantity(product.getQuantity() + 1);
             updateQuantityLabel();
             saveProductToDatabase(product); // Salva a nova quantidade no banco de dados
             }
 
-        private void decreaseQuantity() {
+        public void decreaseQuantity() {
             if (product.getQuantity() > 0) {
                 product.setQuantity(product.getQuantity() - 1);
                 updateQuantityLabel();
@@ -163,7 +161,7 @@ public void closeDatabaseConnection() {
         }
 
 
-        private void updateQuantityLabel() {
+        public void updateQuantityLabel() {
             quantityLabel.setText("Quantidade: " + product.getQuantity());
         }
     }
@@ -481,7 +479,7 @@ public void loadProducts() {
 }
 
 // motodo para atualizar imagem e quantidade
-private void saveProductToDatabase(Product product) {
+public void saveProductToDatabase(Product product) {
     createDatabaseConnection();
 
     String updateQuery = "UPDATE products SET quantity = ?, image_url = ? WHERE name = ?";
@@ -547,7 +545,7 @@ public void updateProductGrid() {
         alert.showAndWait();
     }
 
-    public static class Product implements Serializable {
+    public  class Product implements Serializable {
         private String name;
         private int quantity;
         private String imageURL;
