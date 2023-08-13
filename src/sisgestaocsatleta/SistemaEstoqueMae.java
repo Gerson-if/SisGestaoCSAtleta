@@ -30,7 +30,6 @@ public abstract class SistemaEstoqueMae extends Application implements SistemaEs
 public Connection connection;
 private SistemaMaeDb sistemaDb;
 
-
 public void createDatabaseConnection() {
     try {
         // Tenta estabelecer a conexão com o banco de dados SQLite
@@ -125,7 +124,7 @@ public void closeDatabaseConnection() {
 
 
     // Custom product card component
-    public static class ProductCard extends VBox {
+    public class ProductCard extends VBox {
         private Product product;
         private Label nameLabel;
         private Label quantityLabel;
@@ -149,17 +148,20 @@ public void closeDatabaseConnection() {
             getChildren().addAll(nameLabel, quantityLabel, buttons);
         }
 
-        private void increaseQuantity() {
+            private void increaseQuantity() {
             product.setQuantity(product.getQuantity() + 1);
             updateQuantityLabel();
-        }
+            saveProductToDatabase(product); // Salva a nova quantidade no banco de dados
+            }
 
         private void decreaseQuantity() {
             if (product.getQuantity() > 0) {
                 product.setQuantity(product.getQuantity() - 1);
                 updateQuantityLabel();
+                saveProductToDatabase(product); // Salva a nova quantidade no banco de dados
             }
         }
+
 
         private void updateQuantityLabel() {
             quantityLabel.setText("Quantidade: " + product.getQuantity());
@@ -378,7 +380,7 @@ public void deleteProduct(Product product) {
             imageURLField.setText(fileURL);
         }
     }
-
+// salva imagem no banco de dados
 public void editProductImage(Product product) {
     for (Node node : productGrid.getChildren()) {
         ProductCard productCard = (ProductCard) node;
@@ -390,11 +392,15 @@ public void editProductImage(Product product) {
             imageView.setFitWidth(100);
             imageView.setFitHeight(100);
             productCard.getChildren().add(0, imageView);
-            saveProducts(); // Salva as alterações no banco de dados
+
+            // Salva as alterações no banco de dados, incluindo a nova URL da imagem
+            saveProductToDatabase(product);
+
             break;
         }
     }
 }
+
 
 
     public void goBack() {
@@ -473,19 +479,25 @@ public void loadProducts() {
         closeDatabaseConnection();
     }
 }
-// metodo de atulizar quantidadee imagem 
+
+// motodo para atualizar imagem e quantidade
 private void saveProductToDatabase(Product product) {
     createDatabaseConnection();
 
-    try (PreparedStatement updateStatement = connection.prepareStatement(
-            "UPDATE products SET quantity = ?, image_url = ? WHERE name = ?")) {
-
+    String updateQuery = "UPDATE products SET quantity = ?, image_url = ? WHERE name = ?";
+    
+    try (PreparedStatement updateStatement = connection.prepareStatement(updateQuery)) {
         updateStatement.setInt(1, product.getQuantity());
         updateStatement.setString(2, product.getImageURL());
         updateStatement.setString(3, product.getName());
-        updateStatement.executeUpdate();
+        
+        int rowsAffected = updateStatement.executeUpdate();
 
-        System.out.println("Produto atualizado no banco de dados com sucesso.");
+        if (rowsAffected > 0) {
+            System.out.println("Produto atualizado no banco de dados com sucesso.");
+        } else {
+            System.err.println("Produto não encontrado no banco de dados.");
+        }
     } catch (SQLException e) {
         e.printStackTrace();
         System.err.println("Erro ao atualizar produto no banco de dados: " + e.getMessage());
@@ -493,6 +505,7 @@ private void saveProductToDatabase(Product product) {
         closeDatabaseConnection();
     }
 }
+
 
 // metodo de apagar product 
 public void removeProductFromDatabase(Product product) {
