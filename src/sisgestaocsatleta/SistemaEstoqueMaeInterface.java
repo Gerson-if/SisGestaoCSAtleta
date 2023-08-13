@@ -1,7 +1,11 @@
 package sisgestaocsatleta;
 import javafx.scene.control.TextField;
+import sisgestaocsatleta.SistemaEstoqueMae.Product;
+
 public interface SistemaEstoqueMaeInterface {
-   public  void showCreateProductDialog();
+    public void removeProductFromDatabase(Product product);
+    public void updateProductGrid();
+    public  void showCreateProductDialog();
     public void addProduct(SistemaEstoqueMae.Product product);
     public void showDeleteProductDialog();
     public void deleteProduct(SistemaEstoqueMae.Product product);

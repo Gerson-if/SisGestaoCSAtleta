@@ -4,6 +4,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import  sisgestaocsatleta.SistemaMaeDb;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -27,6 +28,8 @@ import javafx.scene.Node;
 public abstract class SistemaEstoqueMae extends Application implements SistemaEstoqueMaeInterface{
 
 public Connection connection;
+private SistemaMaeDb sistemaDb;
+
 
 public void createDatabaseConnection() {
     try {
@@ -243,13 +246,17 @@ public void closeDatabaseConnection() {
         result.ifPresent(this::deleteProduct);
     }
 
-    public void deleteProduct(Product product) {
-        products.remove(product);
-        productGrid.getChildren().removeIf(node -> ((ProductCard) node).product.equals(product));
+public void deleteProduct(Product product) {
+    products.remove(product);
+    productGrid.getChildren().removeIf(node -> ((ProductCard) node).product.equals(product));
 
-        // Salva os produtos atualizados
-        saveProducts();
-    }
+    // Remove o produto do banco de dados também
+    removeProductFromDatabase(product);
+
+    // Salva os produtos atualizados (opcional, dependendo do fluxo do seu programa)
+    saveProducts();
+}
+
 
     public void showEditProductDialog() {
         Dialog<Product> dialog = new Dialog<>();
@@ -372,21 +379,23 @@ public void closeDatabaseConnection() {
         }
     }
 
-    public void editProductImage(Product product) {
-        for (Node node : productGrid.getChildren()) {
-            ProductCard productCard = (ProductCard) node;
-            if (productCard.product.equals(product)) {
-                // Remove a imagem anterior, se existir
-                productCard.getChildren().removeIf(child -> child instanceof ImageView);
-                // Adiciona a nova imagem do produto acima dos outros componentes
-                ImageView imageView = new ImageView(product.getImageURL());
-                imageView.setFitWidth(100);
-                imageView.setFitHeight(100);
-                productCard.getChildren().add(0, imageView);
-                break;
-            }
+public void editProductImage(Product product) {
+    for (Node node : productGrid.getChildren()) {
+        ProductCard productCard = (ProductCard) node;
+        if (productCard.product.equals(product)) {
+            // Remove a imagem anterior, se existir
+            productCard.getChildren().removeIf(child -> child instanceof ImageView);
+            // Adiciona a nova imagem do produto acima dos outros componentes
+            ImageView imageView = new ImageView(product.getImageURL());
+            imageView.setFitWidth(100);
+            imageView.setFitHeight(100);
+            productCard.getChildren().add(0, imageView);
+            saveProducts(); // Salva as alterações no banco de dados
+            break;
         }
     }
+}
+
 
     public void goBack() {
         // Implement your desired behavior for the "Voltar" button
@@ -400,26 +409,46 @@ public void closeDatabaseConnection() {
 public void saveProducts() {
     createDatabaseConnection();
 
-    try (PreparedStatement statement = connection.prepareStatement(
+    try (PreparedStatement selectStatement = connection.prepareStatement(
+            "SELECT name FROM products WHERE name = ?");
+         PreparedStatement insertStatement = connection.prepareStatement(
             "INSERT OR REPLACE INTO products (name, quantity, image_url) VALUES (?, ?, ?)")) {
 
         for (Product product : products) {
-            statement.setString(1, product.getName());
-            statement.setInt(2, product.getQuantity());
-            statement.setString(3, product.getImageURL());
-            statement.executeUpdate();
+            String productName = product.getName();
+
+            // Verifica se o produto já existe no banco de dados
+            selectStatement.setString(1, productName);
+            ResultSet resultSet = selectStatement.executeQuery();
+            if (resultSet.next()) {
+                // O produto já existe, então não fazemos nada
+                continue;
+            }
+            resultSet.close();
+
+            // Insere o novo produto no banco de dados
+            insertStatement.setString(1, productName);
+            insertStatement.setInt(2, product.getQuantity());
+            insertStatement.setString(3, product.getImageURL());
+            insertStatement.executeUpdate();
         }
     } catch (SQLException e) {
+        System.err.println("Erro ao salvar produtos: " + e.getMessage());
         e.printStackTrace();
+    } finally {
+        closeDatabaseConnection();
     }
 }
-
 
 public void loadProducts() {
     createDatabaseConnection();
 
-    try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM products");
-         ResultSet resultSet = statement.executeQuery()) {
+    try {
+        String query = "SELECT * FROM products";
+        PreparedStatement statement = connection.prepareStatement(query);
+        ResultSet resultSet = statement.executeQuery();
+
+        products.clear(); // Limpa a lista de produtos existente
 
         while (resultSet.next()) {
             String name = resultSet.getString("name");
@@ -429,11 +458,73 @@ public void loadProducts() {
             product.setImageURL(imageURL);
             products.add(product);
         }
+
+        statement.close();
+        resultSet.close();
+
+        // Atualiza a exibição dos produtos na tela
+        updateProductGrid();
+
+        System.out.println("Produtos carregados do banco de dados com sucesso.");
     } catch (SQLException e) {
         e.printStackTrace();
+        System.err.println("Erro ao carregar produtos do banco de dados: " + e.getMessage());
+    } finally {
+        closeDatabaseConnection();
+    }
+}
+// metodo de atulizar quantidadee imagem 
+private void saveProductToDatabase(Product product) {
+    createDatabaseConnection();
+
+    try (PreparedStatement updateStatement = connection.prepareStatement(
+            "UPDATE products SET quantity = ?, image_url = ? WHERE name = ?")) {
+
+        updateStatement.setInt(1, product.getQuantity());
+        updateStatement.setString(2, product.getImageURL());
+        updateStatement.setString(3, product.getName());
+        updateStatement.executeUpdate();
+
+        System.out.println("Produto atualizado no banco de dados com sucesso.");
+    } catch (SQLException e) {
+        e.printStackTrace();
+        System.err.println("Erro ao atualizar produto no banco de dados: " + e.getMessage());
+    } finally {
+        closeDatabaseConnection();
     }
 }
 
+// metodo de apagar product 
+public void removeProductFromDatabase(Product product) {
+    createDatabaseConnection();
+
+    try {
+        String query = "DELETE FROM products WHERE name = ?";
+        PreparedStatement statement = connection.prepareStatement(query);
+        statement.setString(1, product.getName());
+        statement.executeUpdate();
+
+        statement.close();
+
+        System.out.println("Produto removido do banco de dados com sucesso.");
+    } catch (SQLException e) {
+        e.printStackTrace();
+        System.err.println("Erro ao remover produto do banco de dados: " + e.getMessage());
+    } finally {
+        closeDatabaseConnection();
+    }
+}
+
+// Método para atualizar a exibição dos produtos na tela
+public void updateProductGrid() {
+    productGrid.getChildren().clear(); // Remove os produtos atuais da exibição
+
+    for (Product product : products) {
+        ProductCard productCard = new ProductCard(product);
+        productGrid.getChildren().add(productCard);
+        GridPane.setConstraints(productCard, productGrid.getChildren().size() % 3, productGrid.getChildren().size() / 3);
+    }
+}
 
     public void showWarningDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
