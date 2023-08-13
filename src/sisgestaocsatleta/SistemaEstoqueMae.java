@@ -17,6 +17,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import java.io.*;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,16 +26,43 @@ import javafx.scene.Node;
 
 public abstract class SistemaEstoqueMae extends Application implements SistemaEstoqueMaeInterface{
 
-    //cpnexao com db    
-    public Connection connection;
+public Connection connection;
 
-    public void createDatabaseConnection() {
+public void createDatabaseConnection() {
+    try {
+        // Tenta estabelecer a conexão com o banco de dados SQLite
+        connection = DriverManager.getConnection("jdbc:sqlite:products.db");
+        System.out.println("Conexão com o banco de dados estabelecida.");
+
+        // Cria a tabela "products" se ela não existir
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS products (" +
+                    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "name TEXT NOT NULL, " +
+                    "quantity INTEGER NOT NULL, " +
+                    "image_url TEXT)");
+            System.out.println("Tabela 'products' criada ou já existe.");
+        }
+
+    } catch (SQLException e) {
+        // Em caso de erro, imprime o rastreamento do erro
+        e.printStackTrace();
+    }
+}
+
+
+// Método para fechar a conexão com o banco de dados
+public void closeDatabaseConnection() {
+    if (connection != null) {
         try {
-            connection = DriverManager.getConnection("jdbc:sqlite:products.db");
+            connection.close();
+            System.out.println("Conexão com o banco de dados fechada.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+}
+
     
     public List<Product> products = new ArrayList<>();
     public GridPane productGrid;
