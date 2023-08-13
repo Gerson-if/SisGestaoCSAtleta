@@ -8,8 +8,9 @@
   </information>
   <resources>
     <j2se version="1.6+" href="http://java.sun.com/products/autodl/j2se"/>
-    <jar href="SisGestaoCsAtleta.jar" size="2771938" download="eager" />
+    <jar href="SisGestaoCsAtleta.jar" size="2769612" download="eager" />
     <jar href="lib\gson-2.8.2.jar" size="232932" download="eager" />
+    <jar href="lib\sqlite-jdbc-3.36.0.jar" size="7400638" download="eager" />
   </resources>
   <jfx:javafx-desc  width="800" height="600" main-class="sisgestaocsatleta.SisGestaoCsAtleta"  name="SisGestaoCsAtleta" />
   <update check="always"/>

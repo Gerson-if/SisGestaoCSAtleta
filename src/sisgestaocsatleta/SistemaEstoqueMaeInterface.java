@@ -15,4 +15,5 @@ public interface SistemaEstoqueMaeInterface {
     public void saveProducts();
     public void loadProducts();
     public void showWarningDialog(String message);
+    public void createDatabaseConnection();
 }

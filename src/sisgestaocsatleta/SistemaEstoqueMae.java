@@ -1,4 +1,9 @@
 package sisgestaocsatleta;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -20,6 +25,17 @@ import javafx.scene.Node;
 
 public abstract class SistemaEstoqueMae extends Application implements SistemaEstoqueMaeInterface{
 
+    //cpnexao com db    
+    public Connection connection;
+
+    public void createDatabaseConnection() {
+        try {
+            connection = DriverManager.getConnection("jdbc:sqlite:products.db");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    
     public List<Product> products = new ArrayList<>();
     public GridPane productGrid;
 
@@ -66,7 +82,6 @@ public abstract class SistemaEstoqueMae extends Application implements SistemaEs
         // Carrega os produtos salvos
         loadProducts();
     }
-    
     
 
    public static void main(String[] args) {
@@ -354,66 +369,43 @@ public abstract class SistemaEstoqueMae extends Application implements SistemaEs
         System.out.println("Pesquisar por: " + query);
     }
 
- public void saveProducts() {
-    File file = new File("products.txt");
-    try (PrintWriter writer = new PrintWriter(file)) {
+public void saveProducts() {
+    createDatabaseConnection();
+
+    try (PreparedStatement statement = connection.prepareStatement(
+            "INSERT OR REPLACE INTO products (name, quantity, image_url) VALUES (?, ?, ?)")) {
+
         for (Product product : products) {
-            writer.println(product.getName() + ";" + product.getQuantity() + ";" + product.getImageURL());
+            statement.setString(1, product.getName());
+            statement.setInt(2, product.getQuantity());
+            statement.setString(3, product.getImageURL());
+            statement.executeUpdate();
         }
-    } catch (IOException e) {
+    } catch (SQLException e) {
         e.printStackTrace();
     }
 }
 
 
 public void loadProducts() {
-    List<Product> loadedProducts = new ArrayList<>();
+    createDatabaseConnection();
 
-    try (FileReader fileReader = new FileReader("products.txt");
-         BufferedReader reader = new BufferedReader(fileReader)) {
+    try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM products");
+         ResultSet resultSet = statement.executeQuery()) {
 
-        String line;
-        while ((line = reader.readLine()) != null) {
-            String[] parts = line.split(";");
-            if (parts.length == 3) {
-                String name = parts[0];
-                int quantity = Integer.parseInt(parts[1]);
-                String imageURL = parts[2];
-                Product product = new Product(name, quantity);
-                product.setImageURL(imageURL);
-                loadedProducts.add(product);
-            }
+        while (resultSet.next()) {
+            String name = resultSet.getString("name");
+            int quantity = resultSet.getInt("quantity");
+            String imageURL = resultSet.getString("image_url");
+            Product product = new Product(name, quantity);
+            product.setImageURL(imageURL);
+            products.add(product);
         }
-    } catch (IOException e) {
+    } catch (SQLException e) {
         e.printStackTrace();
-        System.out.println("Error loading products.");
-        return; // Exit the method if an error occurs
-    }
-
-    // Update UI only if loading was successful
-    products.clear();
-    products.addAll(loadedProducts);
-
-    productGrid.getChildren().clear();
-    for (Product product : products) {
-        ProductCard productCard = new ProductCard(product);
-        productGrid.getChildren().add(productCard);
-        GridPane.setConstraints(productCard, productGrid.getChildren().size() % 3, productGrid.getChildren().size() / 3);
-
-        String imageURL = product.getImageURL();
-        if (imageURL != null && !imageURL.isEmpty()) {
-            try {
-                ImageView imageView = new ImageView(new Image(imageURL));
-                imageView.setFitWidth(100);
-                imageView.setFitHeight(100);
-                productCard.getChildren().add(0, imageView);
-            } catch (Exception e) {
-                e.printStackTrace();
-                // Handle the exception, for example, by showing a default image
-            }
-        }
     }
 }
+
 
     public void showWarningDialog(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
