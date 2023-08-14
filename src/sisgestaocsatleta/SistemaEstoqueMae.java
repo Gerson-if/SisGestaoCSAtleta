@@ -27,7 +27,8 @@ public abstract class SistemaEstoqueMae extends Application implements SistemaEs
 
 public Connection connection;
 
-
+public static final String DATABASE_URL = "jdbc:sqlite:products.db";
+    
 public void createDatabaseConnection() {
     try {
         // Tenta estabelecer a conexão com o banco de dados SQLite
@@ -411,73 +412,59 @@ public void editProductImage(Product product) {
     }
 
 public void saveProducts() {
-    createDatabaseConnection();
+        createDatabaseConnection();
+        try (PreparedStatement selectStatement = connection.prepareStatement(
+                "SELECT name FROM products WHERE name = ?");
+             PreparedStatement insertStatement = connection.prepareStatement(
+                "INSERT OR REPLACE INTO products (name, quantity, image_url) VALUES (?, ?, ?)")) {
 
-    try (PreparedStatement selectStatement = connection.prepareStatement(
-            "SELECT name FROM products WHERE name = ?");
-         PreparedStatement insertStatement = connection.prepareStatement(
-            "INSERT OR REPLACE INTO products (name, quantity, image_url) VALUES (?, ?, ?)")) {
-
-        for (Product product : products) {
-            String productName = product.getName();
-
-            // Verifica se o produto já existe no banco de dados
-            selectStatement.setString(1, productName);
-            ResultSet resultSet = selectStatement.executeQuery();
-            if (resultSet.next()) {
-                // O produto já existe, então não fazemos nada
-                continue;
+            for (Product product : products) {
+                String productName = product.getName();
+                selectStatement.setString(1, productName);
+                ResultSet resultSet = selectStatement.executeQuery();
+                if (!resultSet.next()) {
+                    insertStatement.setString(1, productName);
+                    insertStatement.setInt(2, product.getQuantity());
+                    insertStatement.setString(3, product.getImageURL());
+                    insertStatement.executeUpdate();
+                }
+                resultSet.close();
             }
-            resultSet.close();
-
-            // Insere o novo produto no banco de dados
-            insertStatement.setString(1, productName);
-            insertStatement.setInt(2, product.getQuantity());
-            insertStatement.setString(3, product.getImageURL());
-            insertStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            closeDatabaseConnection();
         }
-    } catch (SQLException e) {
-        System.err.println("Erro ao salvar produtos: " + e.getMessage());
-        e.printStackTrace();
-    } finally {
-        closeDatabaseConnection();
     }
-}
 
 public void loadProducts() {
-    createDatabaseConnection();
+        createDatabaseConnection();
+        try {
+            String query = "SELECT * FROM products";
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet resultSet = statement.executeQuery();
 
-    try {
-        String query = "SELECT * FROM products";
-        PreparedStatement statement = connection.prepareStatement(query);
-        ResultSet resultSet = statement.executeQuery();
+            products.clear();
+            while (resultSet.next()) {
+                String name = resultSet.getString("name");
+                int quantity = resultSet.getInt("quantity");
+                String imageURL = resultSet.getString("image_url");
+                Product product = new Product(name, quantity);
+                product.setImageURL(imageURL);
+                products.add(product);
+            }
 
-        products.clear(); // Limpa a lista de produtos existente
+            statement.close();
+            resultSet.close();
 
-        while (resultSet.next()) {
-            String name = resultSet.getString("name");
-            int quantity = resultSet.getInt("quantity");
-            String imageURL = resultSet.getString("image_url");
-            Product product = new Product(name, quantity);
-            product.setImageURL(imageURL);
-            products.add(product);
+            updateProductGrid();
+            System.out.println("Produtos carregados do banco de dados com sucesso.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            closeDatabaseConnection();
         }
-
-        statement.close();
-        resultSet.close();
-
-        // Atualiza a exibição dos produtos na tela
-        updateProductGrid();
-
-        System.out.println("Produtos carregados do banco de dados com sucesso.");
-    } catch (SQLException e) {
-        e.printStackTrace();
-        System.err.println("Erro ao carregar produtos do banco de dados: " + e.getMessage());
-    } finally {
-        closeDatabaseConnection();
     }
-}
-
 // motodo para atualizar imagem e quantidade
 public void saveProductToDatabase(Product product) {
     createDatabaseConnection();
