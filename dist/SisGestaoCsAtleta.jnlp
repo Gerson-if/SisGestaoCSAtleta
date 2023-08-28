@@ -8,8 +8,9 @@
   </information>
   <resources>
     <j2se version="1.6+" href="http://java.sun.com/products/autodl/j2se"/>
-    <jar href="SisGestaoCsAtleta.jar" size="2772110" download="eager" />
+    <jar href="SisGestaoCsAtleta.jar" size="2772126" download="eager" />
     <jar href="lib\gson-2.8.2.jar" size="232932" download="eager" />
+    <jar href="lib\mysql-connector-j-8.1.0.jar" size="2485905" download="eager" />
     <jar href="lib\ojdbc8.jar" size="6844991" download="eager" />
     <jar href="lib\sqlite-jdbc-3.36.0.jar" size="7400638" download="eager" />
   </resources>
